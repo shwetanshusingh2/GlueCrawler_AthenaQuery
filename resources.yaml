@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  SourceBucket:
+    Type: String
+  LambdaRole:
+    Type: String
+  GlueRole:
+    Type: String
+  VersionId:
+    Type: String
+
+Resources:
+
+  Database:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: "dbcrawler"
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub lambdafunction
+      Code:
+        S3Bucket: 'data-shwet'
+        S3Key: 'lambda_trigger.zip'
+        S3ObjectVersion: !Ref VersionId
+      Handler: lambda_trigger.handler
+      Runtime: python3.7
+      Role: !Ref LambdaRole
+      Environment:
+        Variables:
+          source: !Ref SourceBucket
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref SourceBucket
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Function: !GetAtt LambdaFunction.Arn
+      VersioningConfiguration:
+         Status: Enabled
+
+  Crawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Name: "CSVCrawler"
+      Role: !Ref GlueRole
+      DatabaseName: !Ref Database
+      Targets:
+        S3Targets:
+          - Path: "s3://shwet23/csv"
+      SchemaChangePolicy:
+        UpdateBehavior: "UPDATE_IN_DATABASE"
+
+  BucketPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref LambdaFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::${SourceBucket}
+
+  MyVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName:
+        Ref: "LambdaFunction"
+      Description: "A test version of MyFunction"
+

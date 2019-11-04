@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Glue Week2"
+Parameters:
+  SourceBucket:
+    Type: String
+  VersionId:
+    Type: String
+
+Resources:
+
+  SecurityStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "https://data-shwet.s3.ap-south-1.amazonaws.com/security.yaml"
+      TimeoutInMinutes: 8
+  ResourcesStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "https://data-shwet.s3.ap-south-1.amazonaws.com/resources.yaml"
+      Parameters:
+        SourceBucket: !Ref SourceBucket
+        GlueRole: !GetAtt SecurityStack.Outputs.GlueRole
+        LambdaRole: !GetAtt SecurityStack.Outputs.LambdaRole
+        VersionId: !Ref VersionId
+      TimeoutInMinutes: 8
+
+
+
